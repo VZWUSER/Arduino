@@ -24,7 +24,7 @@
 
 const char* ssid = STASSID;
 const char* password = STAPSK;
-
+bool automatic =false;
 
 Servo myservo;  // create servo object to control a servo
 ESP8266WebServer server(80);
@@ -33,6 +33,7 @@ Adafruit_MPU6050 mpu;
 const int led = 2;
 
 void handleServo(){
+  automatic=false;
   String POS = server.arg("servoPOS");
   int pos = POS.toInt();
   myservo.write(pos);   // tell servo to go to position
@@ -44,11 +45,27 @@ void handleServo(){
 }
 
 void handleMove() {
+ automatic=false;
  String s = MAIN_page; //Read HTML contents
  server.send(200, "text/html", s); //Send web page
+ 
+}
+
+void autoPilot(){
+  automatic=true;
+   while (automatic) 
+   {
+   sensors_event_t a, g, temp;
+   mpu.getEvent(&a, &g, &temp);
+   float x=a.acceleration.x;
+   int pos=int(x*10);
+   myservo.write(pos);
+   delay(10);
+   }
 }
 
 void handleRoot() {
+  automatic=false;
   digitalWrite(led, 0);
     /* Get new sensor events with the readings */
   sensors_event_t a, g, temp;
@@ -278,6 +295,7 @@ myservo.writeMicroseconds(2300);
 
   server.on("/move",handleMove);
   server.on("/setPOS",handleServo); //Sets servo position from Web 
+  server.on("/auto",autoPilot);
 
   server.begin();
   Serial.println("HTTP server started");
