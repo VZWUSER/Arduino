@@ -7,6 +7,7 @@
 #include <Wire.h>
 #include <ArduinoJson.h>
 #include <Servo.h>
+#include <EasyButton.h>
 
 #include "index.h";
 
@@ -14,7 +15,9 @@
 #define ServoPin 14   
 //D5 is GPIO14
 
-
+//Flash button
+#define BUTTON_PIN 0
+EasyButton button(BUTTON_PIN);
 
 
 #ifndef STASSID
@@ -27,16 +30,24 @@ const char* password = STAPSK;
 bool automatic =false;
 
 Servo myservo;  // create servo object to control a servo
+Servo myservo6;
 ESP8266WebServer server(80);
 Adafruit_MPU6050 mpu;
 
 const int led = 2;
+
+void onPressed() {
+    autoPilot();
+    Serial.println("Button has been pressed!");
+}
+
 
 void handleServo(){
   automatic=false;
   String POS = server.arg("servoPOS");
   int pos = POS.toInt();
   myservo.write(pos);   // tell servo to go to position
+  myservo6.write(pos);
   delay(15);
   Serial.print("Servo Angle:");
   Serial.println(pos);
@@ -58,8 +69,11 @@ void autoPilot(){
    sensors_event_t a, g, temp;
    mpu.getEvent(&a, &g, &temp);
    float x=a.acceleration.x;
-   int pos=int(x*10);
+   int pos=int(x*10+90);
+   float y=a.acceleration.y;
+   int posy=int(-(y*10)+90);
    myservo.write(pos);
+   myservo6.write(posy);
    delay(10);
    }
 }
@@ -100,10 +114,15 @@ void handleNotFound() {
 }
 
 void setup(void) {
-
+myservo6.attach(D6,500, 2400);
 myservo.attach(D5,500, 2400);
-myservo.write(0);
+myservo.write(90);
 myservo.writeMicroseconds(2300);
+myservo6.write(90);
+myservo6.writeMicroseconds(2300);
+
+button.begin();
+button.onPressed(onPressed);
 /*---------- MPU6050 setup  ------------*/
 
   Serial.begin(115200);
@@ -303,5 +322,6 @@ myservo.writeMicroseconds(2300);
 
 void loop(void) {
   server.handleClient();
+  button.read();
   MDNS.update();
 }
